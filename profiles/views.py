@@ -1,3 +1,8 @@
+"""
+Views for creating, editing and viewing site-specific user profiles.
+
+"""
+
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.urlresolvers import reverse
 from django.http import Http404, HttpResponseRedirect
@@ -6,7 +11,7 @@ from django.shortcuts import get_object_or_404, render_to_response
 from django.template import RequestContext
 
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User, SiteProfileNotAvailable
+from django.contrib.auth.models import User
 
 from profiles.utils import get_profile_model
 
@@ -16,12 +21,17 @@ def create_profile(request, form_class=None, success_url=None,
     """
     Create a profile for the user, if one doesn't already exist.
     
+    If the user already has a profile, as determined by
+    ``request.user.get_profile()``, a redirect will be issued to the
+    :view:`profiles.views.edit_profile` view. If no profile model has
+    been specified in the ``AUTH_PROFILE_MODULE`` setting,
+    ``django.contrib.auth.models.SiteProfileNotAvailable`` will be
+    raised.
+    
     To specify the form class used for profile creation, pass it as
     the keyword argument ``form_class``; if this is not supplied, it
     will fall back to ``form_for_model`` for the model specified in
-    the ``AUTH_PROFILE_MODULE`` setting (and will raise
-    ``SiteProfileNotAvailable`` if that setting is not specified or
-    does not correspond to an installed model.
+    the ``AUTH_PROFILE_MODULE`` setting.
     
     If you are supplying your own form class, it must define a method
     named ``save()`` which corresponds to the signature of ``save()``
@@ -34,19 +44,10 @@ def create_profile(request, form_class=None, success_url=None,
     looking for a ``save_m2m()`` method on the form is used, and so
     your form class should define this method.
     
-    If the user already has a profile, as determined by
-    ``request.user.get_profile()``, a redirect will be issued to the
-    ``edit_profile()`` view.
-    
-    If no profile model has been specified in the
-    ``AUTH_PROFILE_MODULE`` setting,
-    ``django.contrib.auth.models.SiteProfileNotAvailable`` will be
-    raised.
-    
     To specify a URL to redirect to after successful profile creation,
     pass it as the keyword argument ``success_url``; this will default
-    to the URL of the ``profile_detail()`` view for the new profile if
-    unspecified.
+    to the URL of the :view:`profiles.views.profile_detail` view for
+    the new profile if unspecified.
     
     To specify the template to use, pass it as the keyword argument
     ``template_name``; this will default to
@@ -108,22 +109,23 @@ def edit_profile(request, form_class=None, success_url=None,
     """
     Edit a user's profile.
     
+    If the user does not already have a profile (as determined by
+    ``User.get_profile()``), a redirect will be issued to the
+    :view:`profiles.views.create_profile` view; if no profile model
+    has been specified in the ``AUTH_PROFILE_MODULE`` setting,
+    ``django.contrib.auth.models.SiteProfileNotAvailable`` will be
+    raised.
+    
     To specify the form class used for profile editing, pass it as the
     keyword argument ``form_class``; this form class must have a
     ``save()`` method which will save updates to the profile
     object. If not supplied, this will default to
     ``form_for_instance`` for the user's existing profile object.
     
-    If the user does not already have a profile (as determined by
-    ``User.get_profile()``), a redirect will be issued to the
-    ``create_profile()`` view; if no profile model has been specified
-    in the ``AUTH_PROFILE_MODULE`` setting,
-    ``django.contrib.auth.models.SiteProfileNotAvailable`` will be
-    raised.
-    
     To specify the URL to redirect to following a successful edit,
     pass it as the keyword argument ``success_url``; this will default
-    to the URL of the ``profile_detail()`` view if not supplied.
+    to the URL of the :view:`profiles.views.profile_detail` view if
+    not supplied.
     
     To specify the template to use, pass it as the keyword argument
     ``template_name``; this will default to
@@ -171,8 +173,12 @@ def profile_detail(request, username, template_name='profiles/profile_detail.htm
     Detail view of a user's profile.
     
     If no profile model has been specified in the
-    ``AUTH_PROFILE_MODULE`` setting, or if the user has not yet
-    created a profile, ``Http404`` will be raised.
+    ``AUTH_PROFILE_MODULE`` setting,
+    ``django.contrib.auth.models.SiteProfileNotAvailable`` will be
+    raised.
+
+    If the user has not yet created a profile, ``Http404`` will be
+    raised.
     
     To specify the template to use, pass it as the keyword argument
     ``template_name``; this will default to
