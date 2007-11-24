@@ -1,6 +1,6 @@
-===============
-Django Profiles
-===============
+====================
+Django user profiles
+====================
 
 This is a fairly simple user-profile management application for
 Django_, designed to make the management of site-specific user

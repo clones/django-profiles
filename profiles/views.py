@@ -9,6 +9,7 @@ from django.http import Http404, HttpResponseRedirect
 from django.newforms import form_for_model, form_for_instance
 from django.shortcuts import get_object_or_404, render_to_response
 from django.template import RequestContext
+from django.views.generic.list_detail import object_list
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -168,7 +169,8 @@ def edit_profile(request, form_class=None, success_url=None,
                               context_instance=RequestContext(request))
 edit_profile = login_required(edit_profile)
 
-def profile_detail(request, username, template_name='profiles/profile_detail.html'):
+def profile_detail(request, username, public_profile_field=None,
+                   template_name='profiles/profile_detail.html'):
     """
     Detail view of a user's profile.
     
@@ -179,6 +181,13 @@ def profile_detail(request, username, template_name='profiles/profile_detail.htm
 
     If the user has not yet created a profile, ``Http404`` will be
     raised.
+
+    If a field on the profile model determines whether the profile can
+    be publicly viewed, pass the name of that field as the keyword
+    argument ``public_profile_field``; that attribute will be checked
+    before displaying the profile, and if it does not return a
+    ``True`` value, the ``profile`` variable in the template will be
+    ``None``. As a result, this field must be a ``BooleanField``.
     
     To specify the template to use, pass it as the keyword argument
     ``template_name``; this will default to
@@ -187,7 +196,9 @@ def profile_detail(request, username, template_name='profiles/profile_detail.htm
     Context:
     
         profile
-            The user's profile.
+            The user's profile, or ``None`` if the user's profile is
+            not publicly viewable (see the note about
+            ``public_profile_field`` above).
     
     Template:
     
@@ -200,6 +211,54 @@ def profile_detail(request, username, template_name='profiles/profile_detail.htm
         profile_obj = user.get_profile()
     except ObjectDoesNotExist:
         raise Http404
+    if public_profile_field is not None and \
+       not getattr(profile_obj, public_profile_field):
+        profile_obj = None
     return render_to_response(template_name,
                               { 'profile': profile_obj },
                               context_instance=RequestContext(request))
+
+def profile_list(request, public_profile_field=None,
+                 template_name='profiles/profile_list.html', **kwargs):
+    """
+    List of user profiles.
+    
+    If no profile model has been specified in the
+    ``AUTH_PROFILE_MODULE`` setting,
+    ``django.contrib.auth.models.SiteProfileNotAvailable`` will be
+    raised.
+    
+    If a field on the profile model determines whether the profile can
+    be publicly viewed, pass the name of that field as the keyword
+    argument ``public_profile_field``; the ``QuerySet`` of profiles
+    will be filtered to include only those on which that field is
+    ``True`` (as a result, this field must be a ``BooleanField``).
+    
+    This view is a wrapper around the
+    :view:`django.views.generic.list_detail.object_list` generic view,
+    so any arguments which are legal for that view will be accepted,
+    with the exception of ``queryset``, which will always be set to
+    the default ``QuerySet`` of the profile model, optionally filtered
+    as described above.
+    
+    Template:
+    
+        ``template_name`` keyword argument or
+        :template:`profiles/profile_list.html`.
+    
+    Context:
+    
+        Same as the :view:`django.views.generic.list_detail.object_list`
+        generic view.
+    
+    """
+    profile_model = get_profile_model()
+    if 'queryset' in kwargs:
+        del kwargs['queryset']
+    queryset = profile_model._default_manager.all()
+    if public_profile_field is not None:
+        queryset = queryset.filter(**{ public_profile_field: True })
+    return object_list(request,
+                       queryset=queryset,
+                       template_name=template_name,
+                       **kwargs)

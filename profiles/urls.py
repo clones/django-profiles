@@ -22,4 +22,7 @@ urlpatterns = patterns('',
                        url(r'(?P<username>\w+)/$',
                            views.profile_detail,
                            name='profiles_profile_detail'),
+                       url(r'^$/',
+                           views.profile_list,
+                           name='profiles_profile_list'),
                        )

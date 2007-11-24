@@ -1,0 +1,108 @@
+====================
+Django user profiles
+====================
+
+
+This is a fairly simple user-profile management application for
+Django_, designed to make the process of creating, editing and viewing
+user profiles as painless as possible.
+
+.. _Django: http://www.djangoproject.com/
+
+
+Overview
+========
+
+In order to provide site-specific, per-user information in addition to
+what's stored by the ``User`` model in ``django.contrib.auth``, Django
+allows the use of a "user profile" model, which should be specified as
+the value of the ``AUTH_PROFILE_MODULE`` setting. If you're unfamiliar
+with this process, documentation is available in the "Profiles"
+section of `Chapter 12 of the Django book`_. This application assumes
+that you have created a profile model for use on your site, and that
+you have filled in the ``AUTH_PROFILE_MODULE`` setting appropriately.
+
+This application provides three views which cover the primary aspects
+of using profiles:
+
+* Allowing users to create their profiles
+
+* Allowing users to edit their profiles
+
+* Allowing profiles to be publicly viewable
+
+Of these, the first two are the most important; the third -- publicly
+viewing user profiles -- is useful, but for sites which use profiles
+merely to store user preferences this can usually be omitted.
+
+
+.. _Chapter 12 of the Django book: http://www.djangobook.com/en/beta/chapter12/
+
+
+Basic use
+=========
+
+For default use, create a profile model for your site and specify the
+``AUTH_PROFILE_MODULE`` setting appropriately. Then add ``profiles``
+to your ``INSTALLED_APPS`` setting, create the appropriate templates
+and set up the URLs. For convenience in linking to profiles, your
+profile model should define a ``get_absolute_url()`` method which
+routes to the view ``profiles.views.profile_detail``, passing the
+username. Typically, this will be done as follows::
+
+    def get_absolute_url(self):
+        return ('profiles_profile_detail', (), { 'username': self.user.username })
+    get_absolute_url = models.permalink(get_absolute_url)
+
+In the default configuration, this application requires four
+templates to be created:
+
+``profiles/create_profile.html``
+    This will display the form for users to initially fill in their
+    profiles; it receives one variable -- ``form``, representing the
+    form for profile creation -- directly, and also uses
+    ``RequestContext`` so that context processors will be applied.
+
+``profiles/edit_profile.html``
+    This will display the form for users to edit their profiles; it
+    receives one variable -- ``form``, representing the form for
+    profile editing -- directly, and also uses ``RequestContext`` so
+    that context processors will be applied.
+
+``profiles/profile_detail.html``
+    This will publicly display a user's profile; it receives one
+    variable -- ``profile``, representing the profile object --
+    directly, and also uses ``RequestContext`` so that context
+    processors will be applied.
+
+``profiles/profile_list.html``
+    This will display a list of user profiles, using `the
+    list_detail.object_list generic view`_.
+
+For the default URL setup, add the following line to your root
+URLConf::
+
+   (r'^profiles/', include('profiles.urls')),
+
+This will set up the following URL patterns:
+
+* ``/profiles/create/`` will be the view for profile creation, and its
+  URL pattern is named ``profiles_create_profile``.
+
+* ``/profiles/edit/`` will be the view for profile editing, and its
+  URL pattern is named ``profiles_edit_profile``.
+
+* ``/profiles/<username>/`` will be the view for public display of a
+  user profile, and its URL pattern is named
+  ``profiles_profile_detail``.
+
+* ``/profiles/`` will be the view for a browsable list of user
+  profiles.
+
+For notes on more advanced usage, including customization of the form
+classes used for profile editing and creation and how to allow users
+to prevent public display of their profiles, see the file
+``views.txt`` in this directory.
+
+.. _the list_detail.object_list generic view: http://www.djangoproject.com/documentation/generic_views/#django-views-generic-list-detail-object-list
+
