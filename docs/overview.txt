@@ -22,8 +22,8 @@ section of `Chapter 12 of the Django book`_. This application assumes
 that you have created a profile model for use on your site, and that
 you have filled in the ``AUTH_PROFILE_MODULE`` setting appropriately.
 
-This application provides three views which cover the primary aspects
-of using profiles:
+This application provides views which cover the primary aspects of
+using profiles:
 
 * Allowing users to create their profiles
 
