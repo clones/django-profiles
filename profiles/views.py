@@ -6,7 +6,6 @@ Views for creating, editing and viewing site-specific user profiles.
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.urlresolvers import reverse
 from django.http import Http404, HttpResponseRedirect
-from django.newforms import form_for_model, form_for_instance
 from django.shortcuts import get_object_or_404, render_to_response
 from django.template import RequestContext
 from django.views.generic.list_detail import object_list
@@ -14,13 +13,14 @@ from django.views.generic.list_detail import object_list
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 
-from profiles.utils import get_profile_model
+from profiles import utils
 
 
 def create_profile(request, form_class=None, success_url=None,
                    template_name='profiles/create_profile.html'):
     """
-    Create a profile for the user, if one doesn't already exist.
+    Create a profile for the current user, if one doesn't already
+    exist.
     
     If the user already has a profile, as determined by
     ``request.user.get_profile()``, a redirect will be issued to the
@@ -31,17 +31,17 @@ def create_profile(request, form_class=None, success_url=None,
     
     To specify the form class used for profile creation, pass it as
     the keyword argument ``form_class``; if this is not supplied, it
-    will fall back to ``form_for_model`` for the model specified in
-    the ``AUTH_PROFILE_MODULE`` setting.
+    will fall back to a ``ModelForm`` for the model specified in the
+    ``AUTH_PROFILE_MODULE`` setting.
     
     If you are supplying your own form class, it must define a method
     named ``save()`` which corresponds to the signature of ``save()``
-    on ``form_for_model``, because this view will call it with
+    on ``ModelForm``, because this view will call it with
     ``commit=False`` and then fill in the relationship to the user
     (which must be via a field on the profile model named ``user``, a
     requirement already imposed by ``User.get_profile()``) before
     finally saving the profile object. If many-to-many relations are
-    involved, the convention established by ``form_for_model`` of
+    involved, the convention established by ``ModelForm`` of
     looking for a ``save_m2m()`` method on the form is used, and so
     your form class should define this method.
     
@@ -70,15 +70,13 @@ def create_profile(request, form_class=None, success_url=None,
         return HttpResponseRedirect(reverse('profiles_edit_profile'))
     except ObjectDoesNotExist:
         pass
-    profile_model = get_profile_model()
     if success_url is None:
         success_url = reverse('profiles_profile_detail',
                               kwargs={ 'username': request.user.username })
     if form_class is None:
-        form_class = form_for_model(profile_model)
-        del form_class.base_fields['user']
+        form_class = utils.get_profile_form()
     if request.method == 'POST':
-        form = form_class(request.POST)
+        form = form_class(data=request.POST, files=request.FILES)
         if form.is_valid():
             profile_obj = form.save(commit=False)
             profile_obj.user = request.user
@@ -93,22 +91,10 @@ def create_profile(request, form_class=None, success_url=None,
                               context_instance=RequestContext(request))
 create_profile = login_required(create_profile)
 
-def get_initial_data(profile_obj):
-    """
-    Given a user profile object, returns a dictionary representing its
-    fields, suitable for passing as the initial data of a form.
-    
-    """
-    opts = profile_obj._meta
-    data_dict = {}
-    for f in opts.fields + opts.many_to_many:
-        data_dict[f.name] = f.value_from_object(profile_obj)
-    return data_dict
-
 def edit_profile(request, form_class=None, success_url=None,
                  template_name='profiles/edit_profile.html'):
     """
-    Edit a user's profile.
+    Edit the current user's profile.
     
     If the user does not already have a profile (as determined by
     ``User.get_profile()``), a redirect will be issued to the
@@ -121,7 +107,11 @@ def edit_profile(request, form_class=None, success_url=None,
     keyword argument ``form_class``; this form class must have a
     ``save()`` method which will save updates to the profile
     object. If not supplied, this will default to
-    ``form_for_instance`` for the user's existing profile object.
+    a ``ModelForm`` for the profile model.
+    
+    If you supply a form class, its ``__init__()`` method must accept
+    an instance of the profile model as the keyword argument
+    ``instance``.
     
     To specify the URL to redirect to following a successful edit,
     pass it as the keyword argument ``success_url``; this will default
@@ -154,15 +144,14 @@ def edit_profile(request, form_class=None, success_url=None,
         success_url = reverse('profiles_profile_detail',
                               kwargs={ 'username': request.user.username })
     if form_class is None:
-        form_class = form_for_instance(profile_obj)
-        del form_class.base_fields['user']
+        form_class = utils.get_profile_form()
     if request.method == 'POST':
-        form = form_class(request.POST, initial=get_initial_data(profile_obj))
+        form = form_class(data=request.POST, files=request.FILES, instance=profile_obj)
         if form.is_valid():
             form.save()
             return HttpResponseRedirect(success_url)
     else:
-        form = form_class()
+        form = form_class(instance=profile_obj)
     return render_to_response(template_name,
                               { 'form': form,
                                 'profile': profile_obj, },
@@ -183,11 +172,12 @@ def profile_detail(request, username, public_profile_field=None,
     raised.
 
     If a field on the profile model determines whether the profile can
-    be publicly viewed, pass the name of that field as the keyword
-    argument ``public_profile_field``; that attribute will be checked
-    before displaying the profile, and if it does not return a
-    ``True`` value, the ``profile`` variable in the template will be
-    ``None``. As a result, this field must be a ``BooleanField``.
+    be publicly viewed, pass the name of that field (as a string) as
+    the keyword argument ``public_profile_field``; that attribute will
+    be checked before displaying the profile, and if it does not
+    return a ``True`` value, the ``profile`` variable in the template
+    will be ``None``. As a result, this field must be a
+    ``BooleanField``.
     
     To specify the template to use, pass it as the keyword argument
     ``template_name``; this will default to
