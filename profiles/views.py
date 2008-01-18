@@ -242,7 +242,7 @@ def profile_list(request, public_profile_field=None,
         generic view.
     
     """
-    profile_model = get_profile_model()
+    profile_model = utils.get_profile_model()
     if 'queryset' in kwargs:
         del kwargs['queryset']
     queryset = profile_model._default_manager.all()
