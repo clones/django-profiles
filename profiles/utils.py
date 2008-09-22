@@ -5,18 +5,18 @@ site-specific user profile model specified in the
 
 """
 
+from django import forms
 from django.conf import settings
 from django.db.models import get_model
-from django import newforms as forms
 
 from django.contrib.auth.models import SiteProfileNotAvailable
 
 
 def get_profile_model():
     """
-    Returns the model class for the currently-active user profile
+    Return the model class for the currently-active user profile
     model, as defined by the ``AUTH_PROFILE_MODULE`` setting. If that
-    setting is missing, raises
+    setting is missing, raise
     ``django.contrib.auth.models.SiteProfileNotAvailable``.
     
     """
@@ -31,10 +31,10 @@ def get_profile_model():
 
 def get_profile_form():
     """
-    Returns a form class (a subclass of the default ``ModelForm``)
+    Return a form class (a subclass of the default ``ModelForm``)
     suitable for creating/editing instances of the site-specific user
     profile model, as defined by the ``AUTH_PROFILE_MODULE``
-    setting. If that setting is missing, raises
+    setting. If that setting is missing, raise
     ``django.contrib.auth.models.SiteProfileNotAvailable``.
     
     """
@@ -42,5 +42,5 @@ def get_profile_form():
     class _ProfileForm(forms.ModelForm):
         class Meta:
             model = profile_mod
-            exclude = ('user',)
+            exclude = ('user',) # User will be filled in by the view.
     return _ProfileForm

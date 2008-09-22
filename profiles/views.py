@@ -5,8 +5,10 @@ Views for creating, editing and viewing site-specific user profiles.
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.urlresolvers import reverse
-from django.http import Http404, HttpResponseRedirect
-from django.shortcuts import get_object_or_404, render_to_response
+from django.http import Http404
+from django.http import HttpResponseRedirect
+from django.shortcuts import get_object_or_404
+from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.views.generic.list_detail import object_list
 
@@ -56,13 +58,13 @@ def create_profile(request, form_class=None, success_url=None,
     
     Context:
     
-        form
-            The profile-creation form.
+    form
+        The profile-creation form.
     
     Template:
     
-        ``template_name`` keyword argument, or
-        :template:`profiles/create_profile.html`.
+    ``template_name`` keyword argument, or
+    :template:`profiles/create_profile.html`.
     
     """
     try:
@@ -70,6 +72,16 @@ def create_profile(request, form_class=None, success_url=None,
         return HttpResponseRedirect(reverse('profiles_edit_profile'))
     except ObjectDoesNotExist:
         pass
+    
+    #
+    # We set up success_url here, rather than as the default value for
+    # the argument. Trying to do it as the argument's default would
+    # mean evaluating the call to reverse() at the time this module is
+    # first imported, which introduces a circular dependency: to
+    # perform the reverse lookup we need access to profiles/urls.py,
+    # but profiles/urls.py in turn imports this module.
+    #
+    
     if success_url is None:
         success_url = reverse('profiles_profile_detail',
                               kwargs={ 'username': request.user.username })
@@ -106,12 +118,13 @@ def edit_profile(request, form_class=None, success_url=None,
     To specify the form class used for profile editing, pass it as the
     keyword argument ``form_class``; this form class must have a
     ``save()`` method which will save updates to the profile
-    object. If not supplied, this will default to
-    a ``ModelForm`` for the profile model.
+    object. If not supplied, this will default to a ``ModelForm`` for
+    the profile model.
     
     If you supply a form class, its ``__init__()`` method must accept
     an instance of the profile model as the keyword argument
-    ``instance``.
+    ``instance``, and must implement a method named ``save()`` for
+    updating and saving the profile object from the form's data.
     
     To specify the URL to redirect to following a successful edit,
     pass it as the keyword argument ``success_url``; this will default
@@ -124,22 +137,29 @@ def edit_profile(request, form_class=None, success_url=None,
     
     Context:
     
-        form
-            The form for editing the profile.
+    form
+        The form for editing the profile.
         
-        profile
-            The user's current profile.
+    profile
+         The user's current profile.
     
     Template:
     
-        ``template_name`` keyword argument or
-        :template:`profiles/edit_profile.html`.
+    ``template_name`` keyword argument or
+    :template:`profiles/edit_profile.html`.
     
     """
     try:
         profile_obj = request.user.get_profile()
     except ObjectDoesNotExist:
         return HttpResponseRedirect(reverse('profiles_create_profile'))
+    
+    #
+    # See the comment in create_profile() for discussion of why
+    # success_url is set up here, rather than as a default value for
+    # the argument.
+    #
+    
     if success_url is None:
         success_url = reverse('profiles_profile_detail',
                               kwargs={ 'username': request.user.username })
@@ -167,10 +187,10 @@ def profile_detail(request, username, public_profile_field=None,
     ``AUTH_PROFILE_MODULE`` setting,
     ``django.contrib.auth.models.SiteProfileNotAvailable`` will be
     raised.
-
+    
     If the user has not yet created a profile, ``Http404`` will be
     raised.
-
+    
     If a field on the profile model determines whether the profile can
     be publicly viewed, pass the name of that field (as a string) as
     the keyword argument ``public_profile_field``; that attribute will
@@ -185,15 +205,15 @@ def profile_detail(request, username, public_profile_field=None,
     
     Context:
     
-        profile
-            The user's profile, or ``None`` if the user's profile is
-            not publicly viewable (see the note about
-            ``public_profile_field`` above).
+    profile
+        The user's profile, or ``None`` if the user's profile is not
+        publicly viewable (see the note about ``public_profile_field``
+        above).
     
     Template:
     
-        ``template_name`` keyword argument or
-        :template:`profiles/profile_detail.html`.
+    ``template_name`` keyword argument or
+    :template:`profiles/profile_detail.html`.
     
     """
     user = get_object_or_404(User, username=username)
@@ -211,7 +231,7 @@ def profile_detail(request, username, public_profile_field=None,
 def profile_list(request, public_profile_field=None,
                  template_name='profiles/profile_list.html', **kwargs):
     """
-    List of user profiles.
+    A list of user profiles.
     
     If no profile model has been specified in the
     ``AUTH_PROFILE_MODULE`` setting,
@@ -231,24 +251,20 @@ def profile_list(request, public_profile_field=None,
     the default ``QuerySet`` of the profile model, optionally filtered
     as described above.
     
-    Template:
-    
-        ``template_name`` keyword argument or
-        :template:`profiles/profile_list.html`.
-    
     Context:
     
-        Same as the :view:`django.views.generic.list_detail.object_list`
-        generic view.
+    Same as the :view:`django.views.generic.list_detail.object_list`
+    generic view.
+    
+    Template:
+    
+    ``template_name`` keyword argument or
+    :template:`profiles/profile_list.html`.
     
     """
     profile_model = utils.get_profile_model()
-    if 'queryset' in kwargs:
-        del kwargs['queryset']
     queryset = profile_model._default_manager.all()
     if public_profile_field is not None:
         queryset = queryset.filter(**{ public_profile_field: True })
-    return object_list(request,
-                       queryset=queryset,
-                       template_name=template_name,
-                       **kwargs)
+    kwargs['queryset'] = queryset
+    return object_list(request, template_name=template_name, **kwargs)

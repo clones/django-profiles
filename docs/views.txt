@@ -22,19 +22,18 @@ specified in the ``AUTH_PROFILE_MODULE`` setting,
 
 To specify the form class used for profile creation, pass it as the
 keyword argument ``form_class``; if this is not supplied, it will fall
-back to ``form_for_model`` for the model specified in the
+back to a ``ModelForm`` for the model specified in the
 ``AUTH_PROFILE_MODULE`` setting.
 
 If you are supplying your own form class, it must define a method
 named ``save()`` which corresponds to the signature of ``save()`` on
-``form_for_model``, because this view will call it with
-``commit=False`` and then fill in the relationship to the user (which
-must be via a field on the profile model named ``user``, a requirement
-already imposed by ``User.get_profile()``) before finally saving the
-profile object. If many-to-many relations are involved, the convention
-established by ``form_for_model`` of looking for a ``save_m2m()``
-method on the form is used, and so your form class should define this
-method.
+``ModelForm``, because this view will call it with ``commit=False``
+and then fill in the relationship to the user (which must be via a
+field on the profile model named ``user``, a requirement already
+imposed by ``User.get_profile()``) before finally saving the profile
+object. If many-to-many relations are involved, the convention
+established by ``ModelForm`` of looking for a ``save_m2m()`` method on
+the form is used, and so your form class should define this method.
 
 To specify a URL to redirect to after successful profile creation,
 pass it as the keyword argument ``success_url``; this will default to
@@ -70,8 +69,10 @@ specified in the ``AUTH_PROFILE_MODULE`` setting,
 To specify the form class used for profile editing, pass it as the
 keyword argument ``form_class``; this form class must have a
 ``save()`` method which will save updates to the profile object. If
-not supplied, this will default to ``form_for_instance`` for the
-user's existing profile object.
+not supplied, this will default to a ``ModelForm for the profile model.
+
+If you supply a form class, its ``__init__()`` method must accept an
+instance of the profile model as the keyword argument ``instance``.
 
 To specify the URL to redirect to following a successful edit, pass it
 as the keyword argument ``success_url``; this will default to the URL
